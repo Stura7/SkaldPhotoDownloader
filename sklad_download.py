@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
 import time
 import os
 import shutil
@@ -54,7 +55,7 @@ def save_photo_name(browser, photo_name, json_path="photo_names.json"):
 def move_downloaded_photo(filename, source_path, destination_path = False):
     try:
         if(source_path == False):
-            source_path = str(Path.home()) + '\Downloads'
+            source_path = str(Path.home()) + "\\Downloads"
         source_file_path = find_file_in_directory(source_path, filename)
         #file_path = os.path.join(os.getcwd(), date.today().strftime("%Y-%m-%d"))
         # Ensure the destination directory exists; create it if it doesn't
@@ -86,17 +87,23 @@ def move_photo(source_path, json_path="photo_names.json"):
         print(f"Error: While moving files.")
 
 def main(gallery_id, move_files=False, source_path=False) -> None:
-    print(gallery_id)
     gallery_url='https://skald.com/event/gallery?lang=en&id=' + str(gallery_id)
-    print(gallery_url)
     browser = webdriver.Firefox()
     browser.get(gallery_url)
-    time.sleep(5) 
+    time.sleep(5)
+    try:
+        wait = WebDriverWait(browser, timeout=5)
+        alert = wait.until(lambda d : d.switch_to.alert)
+        alert.dismiss() 
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
     try:
         cookie_button = browser.find_element(by=By.ID, value="cookiePrompt-accept")
         cookie_button.click()
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+    gallery_title = browser.find_element(by=By.ID, value="page-title").text.split(': ', 1)[1]
+    print(f"Galeriename: '{gallery_title}'")
     #Wait 2min to login to skald & load all thumbnails to get the count of the photos
     print(f"Bitte in Skald einloggen, falls die Bilder im Early Access sind.")
     time.sleep(300) 
@@ -121,4 +128,4 @@ def main(gallery_id, move_files=False, source_path=False) -> None:
     browser.close()
 
 if __name__ == '__main__':
-    main(33, True)
+    main(33)
