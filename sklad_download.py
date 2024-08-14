@@ -86,6 +86,18 @@ def move_photo(source_path, json_path="photo_names.json"):
     except FileNotFoundError:
         print(f"Error: While moving files.")
 
+#Loop to detect, if all photos are loaded by skald (dynamic loading finished)
+def check_image_loaded(browser) -> int:
+    image_count = len(browser.find_elements(by=By.CLASS_NAME, value="image-container"))
+    while True:
+        print(f"Anzahl Bilder auf Skald: '{image_count}'")
+        time.sleep(10)
+        image_count_new = len(browser.find_elements(by=By.CLASS_NAME, value="image-container"))
+        if image_count < image_count_new:
+            image_count = image_count_new
+        else:
+            return image_count
+
 def main(gallery_id, move_files=False, source_path=False) -> None:
     gallery_url='https://skald.com/event/gallery?lang=en&id=' + str(gallery_id)
     browser = webdriver.Firefox()
@@ -106,11 +118,11 @@ def main(gallery_id, move_files=False, source_path=False) -> None:
     print(f"Galeriename: '{gallery_title}'")
     #Wait 2min to login to skald & load all thumbnails to get the count of the photos
     print(f"Bitte in Skald einloggen, falls die Bilder im Early Access sind.")
-    time.sleep(300) 
+    time.sleep(60) 
 
-    image_count = len(browser.find_elements(by=By.CLASS_NAME, value="image-container"))
-    print(f"Anzahl Bilder auf Skald: '{image_count}'")
+    image_count =  check_image_loaded(browser)
 
+    #Open first image
     first_image = browser.find_element(by=By.ID, value="slideIndex-0")
     first_image.click()
 
