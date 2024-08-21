@@ -9,7 +9,7 @@ from datetime import date
 from pathlib import Path
 
 
-def find_file_in_directory(directory, file_name):
+def find_file_in_directory(directory, file_name) -> None:
     # Normalize the file name to search (remove extension if it exists)
     base_name = os.path.splitext(file_name)[0]
 
@@ -29,30 +29,36 @@ def find_file_in_directory(directory, file_name):
     except PermissionError:
         print(f"Permission denied to access directory '{directory}'.")
         return None
-
-
-def save_photo_name(browser, photo_name, json_path="photo_names.json"):
-    # Load existing photo names from the JSON file
-    if os.path.exists(json_path):
-        with open(json_path, "r") as json_file:
+    
+def load_stored_photo_names(photo_name_filepath="photo_names.json") -> list:
+    if os.path.exists(photo_name_filepath):
+        with open(photo_name_filepath, "r") as json_file:
             photo_names = json.load(json_file)
     else:
         photo_names = []
+    return photo_names
+
+def save_photo_names(photo_names, photo_name_filepath="photo_names.json") -> bool:
+    if os.path.exists(photo_name_filepath):
+        with open(photo_name_filepath, "w") as json_file:
+            json.dump(photo_names, json_file, indent=4)
+        return True
+    else:
+        return False
+
+def save_photo_name(browser, photo_new, photo_names) -> list:
+    #Thumbnails replace spaces, which are encoded with "%20", with real spaces
+    photo_new = photo_new.replace("%20", " ")
 
     # Check if the photo name is already in the list
-    if photo_name in photo_names:
-        #print(f"The photo name '{photo_name}' is already present.")
-        return False
-    else:
-        # Add the new photo name to the list
-        photo_names.append(photo_name)
-        with open(json_path, "w") as json_file:
-            json.dump(photo_names, json_file, indent=4)
+    if photo_new not in photo_names:
+        # Add the new photo name to the list + download image
+        photo_names.append(photo_new)
         browser.find_element(by=By.ID, value="download").click()
-        print(f"The photo '{photo_name}' has been downloaded.")
-        return True
+        print(f"The photo '{photo_new}' has been downloaded.")
+    return photo_names
     
-def move_downloaded_photo(filename, source_path, destination_path = False):
+def move_downloaded_photo(filename, source_path, destination_path = False) -> None:
     try:
         if(source_path == False):
             source_path = str(Path.home()) + "\\Downloads"
@@ -73,7 +79,7 @@ def move_downloaded_photo(filename, source_path, destination_path = False):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
-def move_photo(source_path, json_path="photo_names.json"):
+def move_photo(source_path, json_path="photo_names.json") -> None:
     try:
         if os.path.exists(json_path):
             with open(json_path, "r") as json_file:
@@ -87,10 +93,10 @@ def move_photo(source_path, json_path="photo_names.json"):
         print(f"Error: While moving files.")
 
 #Loop to detect, if all photos are loaded by skald (dynamic loading finished)
-def check_image_loaded(browser) -> int:
+def  check_brower_image_loaded(browser) -> int:
     image_count = len(browser.find_elements(by=By.CLASS_NAME, value="image-container"))
     while True:
-        print(f"Anzahl Bilder auf Skald: '{image_count}'")
+        print(f"Skald loaded image count: '{image_count}'")
         time.sleep(10)
         image_count_new = len(browser.find_elements(by=By.CLASS_NAME, value="image-container"))
         if image_count < image_count_new:
@@ -120,18 +126,20 @@ def main(gallery_id, move_files=False, source_path=False) -> None:
     print(f"Bitte in Skald einloggen, falls die Bilder im Early Access sind.")
     time.sleep(60) 
 
-    image_count =  check_image_loaded(browser)
+    image_count =   check_brower_image_loaded(browser)
 
     #Open first image
     first_image = browser.find_element(by=By.ID, value="slideIndex-0")
     first_image.click()
 
+    photo_names = load_stored_photo_names()
     for x in range(image_count-1): #Counter starts with 0
         current_url = browser.current_url
         file_name = current_url.rsplit('=', 1)[1].split('.', 1)[0]
         save_photo_name(browser, file_name) 
         if x < (image_count-2): #At the last element it isn't possible to click the element
             browser.find_element(by=By.ID, value="next").click()
+    save_photo_names(photo_names)
 
     #Wait 2min to ensure that the download is finished
     time.sleep(120)
